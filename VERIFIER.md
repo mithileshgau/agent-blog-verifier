@@ -21,10 +21,12 @@ That is why there are two tiers.
 
 ## Tier 1 - the sprint
 
-the spec's prompt, unchanged. 16 checks, all prompt compliance:
-both files exist, 600-800 words, three sections, the right top-3 topics, every
-link from the feed, no banned words, no stale post cited, no URL-less post used
-as a source, duplicate topic merged, nothing written outside `/output`.
+The frozen prompt in `prompt.md`. 18 checks, all prompt compliance:
+both files exist, 600-800 words, three topic sections, every topic section
+linked to the feed, the right top-3 topics, every link from the feed, no banned
+words, no stale post cited or its facts used, the URL-less post not used,
+duplicate topic merged, nothing written outside `/output`. An intro or closing
+section and a trailing Sources list are warnings only.
 
 Word count and section count are in here **only because the prompt demands
 them**, not because they are good blog rules. A real post is bound by the

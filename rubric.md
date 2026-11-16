@@ -6,8 +6,9 @@ Only four items. Everything a script can decide is already in `verify.py`;
 adding it here would import LLM variance into an experiment about variance.
 
 **Run the judge 3 times per output and take the majority.** One judgement is
-one sample. Use a different model from the one under test where possible, so a
-framework is not graded by its own model's taste.
+one sample. The judge is frozen to `claude-sonnet-5-5`, a different model from
+the agents under test (`claude-opus-5-5`), so a framework is not graded by its
+own model's taste. `rubric.py` runs this procedure for every owner.
 
 ---
 

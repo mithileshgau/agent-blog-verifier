@@ -1,0 +1,13 @@
+# Frozen with prompt.md. One word or phrase per line; lines starting with # are ignored.
+# DRAFT: reconcile with the banned words planted in feed.json titles before freezing.
+delve
+synergy
+leverage
+game-changer
+revolutionary
+gonna
+wanna
+kinda
+insane
+crazy
+damn

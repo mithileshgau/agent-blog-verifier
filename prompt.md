@@ -15,10 +15,11 @@ Using the search tool, find the top 3 AI agent topics from the last 7 days by
 score. Use all search results. Write a draft, check it against these rules,
 then fix it.
 
-Final post: 600-800 words in markdown with a title, intro, one section per
-topic and sources at the end.
+Final post: 600-800 words in markdown with a title, intro and one section per
+topic.
 
-Use only facts and links from the search results.
+Use only facts and links from the search results. Link each fact to its source
+in the sentence where you use it.
 
 Don't use these words: [see banned_words.txt].
 

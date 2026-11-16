@@ -9,6 +9,35 @@ Frozen once the sprint starts. Measures only - never tells an agent how to pass.
 Every check carries a failure tag so a FAIL localises the break, not just
 lowers a score.
 Exit 0 pass, 1 partial, 2 fail.
+
+v2 changes (proposed by the Pydantic AI owner from the first real runs; each is
+marked "v2:" below):
+  - meta_valid accepts source URLs anywhere in meta.json (e.g. nested per topic).
+  - links_from_feed also checks the URLs in meta.json.
+  - section_count counts topic sections only; a closing "Takeaways"/"Conclusion"
+    section is a soft finding (no_extra_sections), not a hard fail. A sources
+    heading may be longer ("Sources and further reading").
+  - no_urlless_source checks the post itself: a source entry without a feed link,
+    or meta.json naming a URL-less post. It no longer matches the topic label,
+    which failed correct posts when that topic was also a top-3 topic.
+  - no_stale_facts (new, hard): numbers that appear only in out-of-window posts.
+  - fresh() compares the full timedelta (6.9 days was "6 days" before; 7.9 was fresh).
+  - --reference-time freezes "today" for standalone runs.
+
+v3 changes (prompt now asks for inline links instead of "sources at the end";
+each is marked "v3:" below):
+  - has_sources is removed. New hard check section_has_feed_link: every topic
+    section carries at least one feed link. A trailing Sources list is a soft
+    warning (no_sources_list), since the prompt no longer asks for one.
+  - Sections are classified by position and links, not keywords. An intro or
+    closing section is the first or last body section with no feed link; it is
+    a soft warning (no_extra_sections). Topic headings containing "overview" or
+    "summary" are no longer misread as extra sections.
+  - no_urlless_source checks what the post and meta.json actually say: a URL-less
+    post named by id or a 5-word run of its title, a number found only in
+    URL-less posts, or a "no link available" style citation.
+  - no_stale_facts reads every text field of a feed post, not just title and
+    summary, and matches numbers by value ("$210M" matches "$210 million").
 """
 import argparse, json, os, re, sys, datetime, collections
 
@@ -52,8 +81,62 @@ def fresh(feed, now):
     for p in feed:
         try: d = datetime.datetime.fromisoformat(p["published_at"].replace("Z", "+00:00"))
         except Exception: continue
-        if (now - d.replace(tzinfo=None)).days <= FRESH_DAYS: out.append(p)
+        # v2: compare the full interval. `.days` truncated, so a 7.9-day-old post was fresh.
+        if now - d.replace(tzinfo=None) <= datetime.timedelta(days=FRESH_DAYS): out.append(p)
     return out
+
+# v2 helpers -----------------------------------------------------------------
+# v3: no keyword list for intro/closing sections; see split_sections().
+SOURCES_H = re.compile(r"^(sources?|references?)\b", re.I)
+NUM = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")  # not digits inside words (H100)
+NOT_TEXT = {"url", "published_at", "id", "score"}
+
+def post_text(p):
+    """v3: every text field of a feed post, not only title and summary."""
+    if not isinstance(p, dict): return ""
+    return " ".join(s for k, v in p.items() if k not in NOT_TEXT
+                    for s in meta_strings(v))
+
+def split_sections(md):
+    """v3: [(heading, text)] for each H2 except the sources heading."""
+    parts = re.split(r"^##\s+", md, flags=re.M)[1:]
+    out = []
+    for sec in parts:
+        head, _, text = sec.partition("\n")
+        if not SOURCES_H.match(head.strip()):
+            out.append((head.strip(), text))
+    return out
+
+def meta_strings(obj):
+    if isinstance(obj, dict):
+        for v in obj.values(): yield from meta_strings(v)
+    elif isinstance(obj, list):
+        for v in obj: yield from meta_strings(v)
+    elif isinstance(obj, str):
+        yield obj
+
+def meta_topic_names(meta):
+    out = []
+    for t in (meta.get("topics") or []) if isinstance(meta, dict) else []:
+        if isinstance(t, str): out.append(t)
+        elif isinstance(t, dict):
+            name = next((t[k] for k in ("topic", "name", "title", "label")
+                         if isinstance(t.get(k), str)), None)
+            if name: out.append(name)
+    return out
+
+def numbers(text):
+    """v3: numeric values only ("$210M" -> "210"), so units and "million" spellings match."""
+    out = set()
+    for n in NUM.findall(text):
+        n = n.replace(",", "").rstrip(".")
+        if re.fullmatch(r"(19|20)\d\d", n): continue        # years
+        if re.fullmatch(r"\d", n): continue                  # lone digits
+        out.add(n)
+    return out
+
+def mentions_number(n, text):
+    return n in numbers(text)
 
 def expected_topics(feed, now):
     """Top 3 by score among posts that are fresh, have a URL, deduped by topic."""
@@ -84,35 +167,61 @@ def run(output_dir, feed_path, banned_path, now=None):
         try: meta = json.load(open(meta_p, encoding="utf8"))
         except Exception as e:
             r.add("meta_valid", True, "file_or_state_error", False, f"unparseable: {e}")
+    meta_urls = set()
     if meta is not None:
-        good = isinstance(meta, dict) and "topics" in meta and (
-            "source_urls" in meta or "sources" in meta)
+        # v2: the prompt says "topics and source URLs" but names no keys. Accept URLs
+        # wherever they are (top-level list or nested per topic); require both parts.
+        meta_urls = {norm(s) for s in meta_strings(meta) if s.startswith("http")}
+        good = (isinstance(meta, dict) and bool(meta_topic_names(meta))
+                and bool(meta_urls))
         r.add("meta_valid", True, "file_or_state_error", good,
-              f"keys={list(meta)[:6]}")
+              f"keys={list(meta)[:6] if isinstance(meta, dict) else type(meta).__name__}; "
+              f"{len(meta_topic_names(meta))} topics, {len(meta_urls)} URLs")
 
     w = len(words(md))
     r.add("word_count", True, "misread_instruction", WORD_MIN <= w <= WORD_MAX,
           f"{w} words, want {WORD_MIN}-{WORD_MAX}")
 
+    feed_urls = {norm(p["url"]) for p in feed if p.get("url")}
+    linked = lambda text: bool({norm(u) for u in urls(text)} & feed_urls)
+
     h1 = re.findall(r"^#\s+\S", md, flags=re.M)
-    h2 = re.findall(r"^##\s+(.+)$", md, flags=re.M)
-    body_h2 = [h for h in h2 if h.strip().lower() not in ("sources", "references")]
+    # v3: classify by position and links. The first or last body section with no
+    # feed link is an intro/closing section; everything else is a topic section.
+    secs = split_sections(md)
+    framing = set()
+    if len(secs) > SECTIONS:
+        if not linked(secs[0][1]): framing.add(0)
+        if not linked(secs[-1][1]): framing.add(len(secs) - 1)
+    topic_secs = [s for i, s in enumerate(secs) if i not in framing]
+    framing_h2 = [secs[i][0] for i in sorted(framing)]
     r.add("has_title", True, "misread_instruction", len(h1) == 1, f"{len(h1)} H1")
-    r.add("section_count", True, "misread_instruction", len(body_h2) == SECTIONS,
-          f"{len(body_h2)} sections: {body_h2[:5]}")
+    # v2: hard = exactly one section per topic; an extra intro/closing section is soft.
+    r.add("section_count", True, "misread_instruction", len(topic_secs) == SECTIONS,
+          f"{len(topic_secs)} topic sections: {[h for h, _ in topic_secs][:5]}")
+    r.add("no_extra_sections", False, "misread_instruction", not framing_h2,
+          f"non-topic sections: {framing_h2[:3]}")
+    # v3: the prompt asks for each fact to be linked where it is used.
+    bare = [h[:30] for h, text in topic_secs if not linked(text)]
+    r.add("section_has_feed_link", True, "misread_instruction", not bare,
+          f"topic sections with no feed link: {bare[:3]}")
 
     first = md.find("\n##")
     intro = words(md[md.find("\n", md.find("# ")) : first if first > 0 else len(md)])
+    if 0 in framing:  # v3: an "## Introduction" section counts as the intro
+        intro += words(secs[0][1])
     r.add("has_intro", True, "misread_instruction", len(intro) >= 30,
           f"{len(intro)} intro words")
 
-    feed_urls = {norm(p["url"]) for p in feed if p.get("url")}
     used = {norm(u) for u in urls(md)}
-    stray = sorted(used - feed_urls)
+    stray = sorted((used | meta_urls) - feed_urls)  # v2: meta.json URLs too
     r.add("links_from_feed", True, "said_done_but_failed", not stray,
           f"{len(stray)} off-feed: {stray[:3]}")
-    r.add("has_sources", False, "misread_instruction",
-          bool(re.search(r"^##\s*(sources|references)", md, re.I | re.M)), "")
+    # v3: the prompt no longer asks for a Sources list; one at the end is a warning.
+    src_heads = [h for h in re.findall(r"^##\s+(.+)$", md, flags=re.M)
+                 if SOURCES_H.match(h.strip())]
+    r.add("no_sources_list", False, "misread_instruction", not src_heads,
+          f"sources heading present: {src_heads[:1]}")
 
     low = md.lower()
     hits = [b for b in banned if re.search(rf"\b{re.escape(b)}\b", low)]
@@ -124,10 +233,54 @@ def run(output_dir, feed_path, banned_path, now=None):
     r.add("no_stale_sources", True, "lost_context", not used_stale,
           f"cited {len(used_stale)} post(s) older than {FRESH_DAYS}d")
 
+    # v3: the URL-less post must not be used, wherever it shows up. Check what the
+    # post and meta.json say: the post named by id (meta) or by a 5-word run of its
+    # title, a number that exists only in URL-less posts, or a citation that admits
+    # it has no link.
+    flat = lambda text: " ".join(re.findall(r"[a-z0-9%$]+", text.lower()))
     nourl = [p for p in feed if not p.get("url")]
-    r.add("no_urlless_source", True, "wrong_tool_or_args",
-          not any(p["topic"].lower() in low for p in nourl),
-          f"{len(nourl)} feed posts lack a URL")
+    meta_text = " ".join(meta_strings(meta)).lower() if meta is not None else ""
+    blog_words, meta_words = flat(md), flat(meta_text)
+    meta_ids = set()
+    def collect_ids(obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k in ("id", "post_id") and isinstance(v, (str, int)): meta_ids.add(str(v).lower())
+                collect_ids(v)
+        elif isinstance(obj, list):
+            for v in obj: collect_ids(v)
+    collect_ids(meta)
+    linked_text = " ".join(post_text(p) for p in feed if p.get("url"))
+    linked_nums = numbers(linked_text)
+    blog_nums = numbers(re.sub(r"\(https?://[^)]*\)|https?://\S+", " ", md))  # not URL digits
+    used_nourl = []
+    for p in nourl:
+        label = str(p.get("id") or p.get("title", "")[:40])
+        title = flat(p.get("title", "")).split()
+        runs = {" ".join(title[i:i + 5]) for i in range(max(len(title) - 4, 0))}
+        hit = [w for w, text in (("blog", blog_words), ("meta", meta_words))
+               if any(f" {run} " in f" {text} " for run in runs)]
+        if p.get("id") is not None and str(p["id"]).lower() in meta_ids:
+            hit.append("meta id")
+        only_here = (numbers(post_text(p)) - linked_nums) & blog_nums
+        if only_here: hit.append(f"numbers {sorted(only_here)[:2]}")
+        if hit: used_nourl.append(f"{label}: {', '.join(hit)}")
+    admits = re.findall(r"[^.\n]*\b(?:no (?:link|url)|link (?:not |un)available|"
+                        r"without a (?:link|url))\b[^.\n]*", md, re.I)
+    if nourl and admits: used_nourl.append(f"unlinked citation: {admits[0].strip()[:60]}")
+    r.add("no_urlless_source", True, "wrong_tool_or_args", not used_nourl,
+          f"URL-less post used: {used_nourl[:2]}")
+
+    # v2: facts (numbers) that exist only in out-of-window posts must not be used.
+    # v3: read every text field of each post, and match numbers by value.
+    fresh_posts = fresh(feed, now)
+    fresh_nums = numbers(" ".join(post_text(p) for p in fresh_posts))
+    stale_hits = set()
+    for p in feed:
+        if p in fresh_posts: continue
+        stale_hits |= (numbers(post_text(p)) - fresh_nums) & blog_nums
+    r.add("no_stale_facts", True, "lost_context", not stale_hits,
+          f"numbers found only in out-of-window posts: {sorted(stale_hits)[:4]}")
 
     exp = expected_topics(feed, now)
     matched = [p for p in exp if p["topic"].lower() in low
@@ -135,8 +288,8 @@ def run(output_dir, feed_path, banned_path, now=None):
     r.add("topics_match_feed", True, "wrong_tool_or_args", len(matched) == len(exp),
           f"{len(matched)}/{len(exp)}: expected {[p['topic'] for p in exp]}")
 
-    if meta and isinstance(meta.get("topics"), list):
-        seen = [t.strip().lower() for t in meta["topics"] if isinstance(t, str)]
+    if meta and isinstance(meta, dict) and isinstance(meta.get("topics"), list):
+        seen = [t.strip().lower() for t in meta_topic_names(meta)]  # v2: topic objects too
         r.add("no_duplicate_topic", True, "lost_context", len(set(seen)) == len(seen),
               f"meta topics={seen}")
 
@@ -350,10 +503,6 @@ def selftest():
         body.append(f"\n## {t.title()}\n\n" + (f"Reports on {t} describe a shift in how teams "
                     f"scope and observe their runs, with specifics varying by stack. ") * 9
                     + f"[source]({u})\n")
-    body.append("\n## Sources\n\n" + "\n".join(
-        f"- [{t}]({u})" for t, u in (("agent harness", "https://a.dev/harness"),
-                                     ("agent memory", "https://b.dev/memory"),
-                                     ("tool calling", "https://d.dev/tools"))))
     open(os.path.join(out, "blog.md"), "w").write("".join(body))
     json.dump({"topics": ["agent harness", "agent memory", "tool calling"],
                "source_urls": ["https://a.dev/harness", "https://b.dev/memory",
@@ -376,9 +525,19 @@ if __name__ == "__main__":
     ap.add_argument("--tier2", action="store_true",
                     help="also run prompt-v2 checks (SEO shape, product-mention discipline)")
     ap.add_argument("--product", default="input/product.md")
+    ap.add_argument("--reference-time",
+                    help="v2: frozen 'today' as ISO 8601 with timezone; without it the "
+                         "7-day window moves with the real clock")
     a = ap.parse_args()
     if a.selftest: selftest(); sys.exit(0)
-    res = run(a.output, a.feed, a.banned)
+    ref = None
+    if a.reference_time:
+        ref = datetime.datetime.fromisoformat(a.reference_time.replace("Z", "+00:00"))
+        if ref.tzinfo is None: sys.exit("--reference-time needs a timezone")
+        ref = ref.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    else:
+        print("warning: no --reference-time; using the current clock", file=sys.stderr)
+    res = run(a.output, a.feed, a.banned, now=ref)
     if a.tier2:
         bp = os.path.join(a.output, "blog.md")
         if os.path.isfile(bp):
