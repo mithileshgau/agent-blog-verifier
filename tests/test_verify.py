@@ -129,9 +129,9 @@ class VerifyTest(unittest.TestCase):
                    ("Agent evals", f"500 tasks ([source]({U['evals']})). ")])
         self.assertOutcome(md, "fail", {"section_has_feed_link"})
 
-    def test_sources_list_is_a_warning(self):
+    def test_sources_section_fails(self):
         md = post(extra=f"\n## Sources\n\n- [Memory]({U['mem']})\n")
-        self.assertOutcome(md, "partial", {"no_sources_list"})
+        self.assertOutcome(md, "fail", {"no_extra_sections"})
 
     def test_overview_and_summary_headings_are_topics(self):
         md = post([("Agent memory: an overview", f"Costs fell 40% ([source]({U['mem']})). "),
@@ -139,12 +139,13 @@ class VerifyTest(unittest.TestCase):
                    ("Agent evals", f"500 tasks ([source]({U['evals']})). ")])
         self.assertOutcome(md, "pass")
 
-    def test_closing_section_by_position_is_a_warning(self):
+    def test_closing_section_by_position_fails(self):
         secs = [("Agent memory", f"Costs fell 40% ([source]({U['mem']})). "),
                 ("Tool calling", f"Parallel calls ([source]({U['tools']})). "),
                 ("Agent evals", f"500 tasks ([source]({U['evals']})). ")]
         md = post(secs, extra="\n## The common thread\n\nAll three point the same way.\n")
-        self.assertOutcome(md, "partial", {"no_extra_sections"})
+        fails = self.assertOutcome(md, "fail", {"no_extra_sections"})
+        self.assertNotIn("section_count", fails)
 
     def test_intro_section_counts_as_intro(self):
         secs = [("Introduction", "This week three topics led the feed. " + filler("i", 30) + " "),
@@ -155,6 +156,17 @@ class VerifyTest(unittest.TestCase):
         self.assertNotIn("has_intro", fails)
         self.assertNotIn("section_count", fails)
         self.assertIn("no_extra_sections", fails)
+
+    # v3: meta.json must have the shape the prompt names --------------------
+    def test_meta_nested_shape_fails(self):
+        meta = {"topics": [{"topic": "agent memory", "urls": [U["mem"]]}]}
+        self.assertOutcome(post(), "fail", {"meta_valid"}, meta)
+
+    def test_meta_extra_key_fails(self):
+        self.assertOutcome(post(), "fail", {"meta_valid"}, dict(META, notes="x"))
+
+    def test_meta_non_url_source_fails(self):
+        self.assertOutcome(post(), "fail", {"meta_valid"}, dict(META, source_urls=["memory post"]))
 
     def test_selftest_runs(self):
         verify.selftest()

@@ -12,18 +12,19 @@ the change is void.
 
 ```
 Using the search tool, find the top 3 AI agent topics from the last 7 days by
-score. Use all search results. Write a draft, check it against these rules,
-then fix it.
+score. A topic's score is its highest-scoring post. Use all search results.
+Write a draft, check it against these rules, then fix it.
 
-Final post: 600-800 words in markdown with a title, intro and one section per
-topic.
+Final post: 600-800 words in markdown. Title, a short intro, then exactly one
+## section per topic. No other sections.
 
 Use only facts and links from the search results. Link each fact to its source
 in the sentence where you use it.
 
 Don't use these words: [see banned_words.txt].
 
-Save blog.md and meta.json (topics and source URLs) to /output only.
+Save blog.md and meta.json to /output only. meta.json has this shape:
+{"topics": ["..."], "source_urls": ["..."]}
 ```
 
 ## Inputs, identical for every framework

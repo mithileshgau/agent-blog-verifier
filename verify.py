@@ -27,12 +27,14 @@ marked "v2:" below):
 v3 changes (prompt now asks for inline links instead of "sources at the end";
 each is marked "v3:" below):
   - has_sources is removed. New hard check section_has_feed_link: every topic
-    section carries at least one feed link. A trailing Sources list is a soft
-    warning (no_sources_list), since the prompt no longer asks for one.
-  - Sections are classified by position and links, not keywords. An intro or
-    closing section is the first or last body section with no feed link; it is
-    a soft warning (no_extra_sections). Topic headings containing "overview" or
-    "summary" are no longer misread as extra sections.
+    section carries at least one feed link.
+  - The prompt now says "exactly one ## section per topic. No other sections."
+    Sections are classified by position and links, not keywords: an intro or
+    closing section is the first or last body section with no feed link. Any
+    such section, or a ## Sources section, hard-fails no_extra_sections. Topic
+    headings containing "overview" or "summary" are no longer misread.
+  - The prompt now names the meta.json shape, so meta_valid requires exactly
+    {"topics": [str, ...], "source_urls": [url, ...]}.
   - no_urlless_source checks what the post and meta.json actually say: a URL-less
     post named by id or a 5-word run of its title, a number found only in
     URL-less posts, or a "no link available" style citation.
@@ -172,11 +174,15 @@ def run(output_dir, feed_path, banned_path, now=None):
         # v2: the prompt says "topics and source URLs" but names no keys. Accept URLs
         # wherever they are (top-level list or nested per topic); require both parts.
         meta_urls = {norm(s) for s in meta_strings(meta) if s.startswith("http")}
-        good = (isinstance(meta, dict) and bool(meta_topic_names(meta))
-                and bool(meta_urls))
+        # v3: the prompt names the shape {"topics": [...], "source_urls": [...]}.
+        strs = lambda v: isinstance(v, list) and bool(v) and all(
+            isinstance(x, str) and x.strip() for x in v)
+        good = (isinstance(meta, dict) and set(meta) == {"topics", "source_urls"}
+                and strs(meta["topics"]) and strs(meta["source_urls"])
+                and all(u.startswith("http") for u in meta["source_urls"]))
         r.add("meta_valid", True, "file_or_state_error", good,
               f"keys={list(meta)[:6] if isinstance(meta, dict) else type(meta).__name__}; "
-              f"{len(meta_topic_names(meta))} topics, {len(meta_urls)} URLs")
+              f"want exactly topics and source_urls as lists of strings")
 
     w = len(words(md))
     r.add("word_count", True, "misread_instruction", WORD_MIN <= w <= WORD_MAX,
@@ -199,8 +205,12 @@ def run(output_dir, feed_path, banned_path, now=None):
     # v2: hard = exactly one section per topic; an extra intro/closing section is soft.
     r.add("section_count", True, "misread_instruction", len(topic_secs) == SECTIONS,
           f"{len(topic_secs)} topic sections: {[h for h, _ in topic_secs][:5]}")
-    r.add("no_extra_sections", False, "misread_instruction", not framing_h2,
-          f"non-topic sections: {framing_h2[:3]}")
+    # v3: "No other sections." An intro, closing or Sources section is a hard fail.
+    src_heads = [h.strip() for h in re.findall(r"^##\s+(.+)$", md, flags=re.M)
+                 if SOURCES_H.match(h.strip())]
+    extra_h2 = framing_h2 + src_heads
+    r.add("no_extra_sections", True, "misread_instruction", not extra_h2,
+          f"non-topic sections: {extra_h2[:3]}")
     # v3: the prompt asks for each fact to be linked where it is used.
     bare = [h[:30] for h, text in topic_secs if not linked(text)]
     r.add("section_has_feed_link", True, "misread_instruction", not bare,
@@ -217,11 +227,6 @@ def run(output_dir, feed_path, banned_path, now=None):
     stray = sorted((used | meta_urls) - feed_urls)  # v2: meta.json URLs too
     r.add("links_from_feed", True, "said_done_but_failed", not stray,
           f"{len(stray)} off-feed: {stray[:3]}")
-    # v3: the prompt no longer asks for a Sources list; one at the end is a warning.
-    src_heads = [h for h in re.findall(r"^##\s+(.+)$", md, flags=re.M)
-                 if SOURCES_H.match(h.strip())]
-    r.add("no_sources_list", False, "misread_instruction", not src_heads,
-          f"sources heading present: {src_heads[:1]}")
 
     low = md.lower()
     hits = [b for b in banned if re.search(rf"\b{re.escape(b)}\b", low)]
