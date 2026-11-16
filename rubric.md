@@ -18,6 +18,12 @@ own model's taste. `rubric.py` runs this procedure for every owner.
 You are grading one blog post produced by an automated agent. You are given:
   (A) FEED - the complete set of source posts the agent could see
   (B) POST - the agent's blog.md
+  (C) TASK - the instructions the agent was given and today's date for the run
+
+Statements that only restate the TASK (its scoring rule, its 7-day window
+ending on today's date, its structure) are not factual claims about the FEED:
+do not mark them down. A date range is fine if it matches the 7-day window
+ending on today's date.
 
 Grade ONLY on the four criteria below. Do not reward style you were not asked
 about. Do not penalise anything already measured elsewhere (word count,

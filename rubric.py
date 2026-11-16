@@ -11,6 +11,9 @@ so rubric.md stays the single source of truth. Per rubric.md:
 
   python3 rubric.py --output ./output --feed feed.json [--json]
 
+The judge also sees the task (prompt.md with banned_words.txt filled in) and the
+frozen reference date, so restating the task's own rules is not read as invention.
+
 Needs the `anthropic` package and ANTHROPIC_API_KEY (or an `ant auth login` profile).
 """
 import argparse, json, os, re, statistics, sys
@@ -23,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CRITERIA = ("grounded", "no_invention", "clarity", "attribution")
 JUDGE_MODEL = "claude-sonnet-5-5"  # frozen with rubric.md
 JUDGE_RUNS = 3
+REFERENCE_TIME = "2026-11-16T00:00:00Z"  # frozen with prompt.md and feed.json
 
 
 class Grade(BaseModel):
@@ -40,9 +44,25 @@ def judge_prompt(path=os.path.join(HERE, "rubric.md")):
     return re.search(r"```\n(.*?)```", section, re.S).group(1).strip()
 
 
-def grade_once(client, model, prompt, feed_text, post_text):
-    content = (f"{prompt}\n\n(A) FEED\n<feed>\n{feed_text}\n</feed>\n\n"
-               f"(B) POST\n<post>\n{post_text}\n</post>")
+def task_text(reference_time=REFERENCE_TIME, prompt_path=os.path.join(HERE, "prompt.md"),
+              banned_path=os.path.join(HERE, "banned_words.txt")):
+    """The frozen task exactly as agents receive it, plus the run's date."""
+    md = open(prompt_path, encoding="utf8").read()
+    block = re.search(r"## Prompt.*?```\n(.*?)```", md, re.S).group(1).strip()
+    words = [l.strip() for l in open(banned_path, encoding="utf8")
+             if l.strip() and not l.startswith("#")]
+    block = block.replace("[see banned_words.txt]", ", ".join(words))
+    return f"Today's date for this run: {reference_time[:10]}\n\n{block}"
+
+
+def judge_content(prompt, feed_text, post_text, task):
+    return (f"{prompt}\n\n(A) FEED\n<feed>\n{feed_text}\n</feed>\n\n"
+            f"(B) POST\n<post>\n{post_text}\n</post>\n\n"
+            f"(C) TASK\n<task>\n{task}\n</task>")
+
+
+def grade_once(client, model, prompt, feed_text, post_text, task=None):
+    content = judge_content(prompt, feed_text, post_text, task or task_text())
     try:
         response = client.messages.parse(
             model=model, max_tokens=16000, output_format=Grade,
@@ -68,7 +88,8 @@ def majority(values):
     return top if count * 2 > len(values) else int(statistics.median(values))
 
 
-def grade(output_dir, feed_path, runs=JUDGE_RUNS, model=JUDGE_MODEL):
+def grade(output_dir, feed_path, runs=JUDGE_RUNS, model=JUDGE_MODEL,
+          reference_time=REFERENCE_TIME):
     post_path = os.path.join(output_dir, "blog.md")
     if not os.path.isfile(post_path):
         return {"verdict": "unscored", "reason": "blog.md missing", "grades": []}
@@ -76,7 +97,9 @@ def grade(output_dir, feed_path, runs=JUDGE_RUNS, model=JUDGE_MODEL):
     post_text = open(post_path, encoding="utf8", errors="ignore").read()
     client = anthropic.Anthropic()
     prompt = judge_prompt()
-    grades = [grade_once(client, model, prompt, feed_text, post_text) for _ in range(runs)]
+    task = task_text(reference_time)
+    grades = [grade_once(client, model, prompt, feed_text, post_text, task)
+              for _ in range(runs)]
     ok = [g for g in grades if g["status"] == "ok"]
     if len(ok) * 2 <= runs:
         return {"verdict": "unscored", "reason": "most grades failed", "grades": grades}
@@ -87,7 +110,8 @@ def grade(output_dir, feed_path, runs=JUDGE_RUNS, model=JUDGE_MODEL):
     worst = [g["worst_quote"] for g in ok if g.get("worst_quote")]
     return {"verdict": verdict, "total": total, "scores": scores, "model": model,
             "runs": runs, "grades_ok": len(ok), "worst_quotes": worst, "grades": grades,
-            "prompt_source": "rubric.md (Judge prompt block, verbatim)"}
+            "prompt_source": "rubric.md (Judge prompt block, verbatim)",
+            "reference_time": reference_time}
 
 
 if __name__ == "__main__":
@@ -95,8 +119,10 @@ if __name__ == "__main__":
     ap.add_argument("--output", default="./output")
     ap.add_argument("--feed", default="feed.json")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--reference-time", default=REFERENCE_TIME,
+                    help="the run's frozen date, as given to the agent and verify.py")
     a = ap.parse_args()
-    result = grade(a.output, a.feed)
+    result = grade(a.output, a.feed, reference_time=a.reference_time)
     if a.json:
         print(json.dumps(result, indent=1))
     else:
