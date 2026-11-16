@@ -1,0 +1,272 @@
+[
+ {
+  "id": 1,
+  "topic": "agent payments",
+  "score": 99,
+  "url": "https://agentnews.example/agent-payments-raise",
+  "published_at": "2026-10-28T09:00:00Z",
+  "title": "Agent payments startup raises $210M in a synergy-driven round",
+  "summary": "The company says its checkout agents now serve 3,400 merchants and settle payments in 9 seconds."
+ },
+ {
+  "id": 2,
+  "topic": "agent memory",
+  "score": 94,
+  "url": "https://agentnews.example/memory-store-costs",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Shared memory store cuts agent hosting costs by 38%",
+  "summary": "A team moved long-term agent memory into one vector store and reported a 38% drop in monthly hosting costs across 14 production agents."
+ },
+ {
+  "id": 3,
+  "topic": "browser agents",
+  "score": 61,
+  "url": "https://agentnews.example/browser-agents-forms",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Browser agents fill web forms with 82% accuracy in a public test",
+  "summary": "A public benchmark of 1,200 web forms found browser agents completed 82% without human help."
+ },
+ {
+  "id": 4,
+  "topic": "agent security",
+  "score": 58,
+  "url": "https://agentnews.example/prompt-injection-audit",
+  "published_at": "2026-11-14T09:00:00Z",
+  "title": "Audit finds prompt injection in 1 of 6 agent tool outputs",
+  "summary": "Researchers reviewed 600 tool outputs from deployed agents and found injected instructions in 1 of every 6."
+ },
+ {
+  "id": 5,
+  "topic": "tool calling",
+  "score": 91,
+  "url": "https://agentnews.example/parallel-tool-calls",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Parallel tool calls cut agent task time by 41%",
+  "summary": "A new SDK release runs independent tool calls in parallel, which cut median task time by 41% in the vendor's tests of 300 tasks."
+ },
+ {
+  "id": 6,
+  "topic": "voice agents",
+  "score": 47,
+  "url": "https://agentnews.example/voice-agent-latency",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Voice agent latency drops to 480 ms",
+  "summary": "A speech stack update brought end-to-end voice agent latency down to 480 ms on a standard call."
+ },
+ {
+  "id": 7,
+  "topic": "agent observability",
+  "score": 55,
+  "url": "https://agentnews.example/tracing-standard",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Tracing spec adds a schema for agent tool spans",
+  "summary": "The draft spec defines 11 attributes for recording agent tool calls so traces from different frameworks line up."
+ },
+ {
+  "id": 8,
+  "topic": "agent memory",
+  "score": 97,
+  "url": null,
+  "published_at": "2026-11-14T09:00:00Z",
+  "title": "Forum thread on memory leaks in long agent runs",
+  "summary": "Developers in a forum thread report memory growth after 72 hours of continuous agent runs, with no official response yet."
+ },
+ {
+  "id": 9,
+  "topic": "coding agents",
+  "score": 52,
+  "url": "https://agentnews.example/coding-agent-merges",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Coding agents open 22% of merged pull requests at one company",
+  "summary": "One engineering team says coding agents authored 22% of the pull requests it merged last month."
+ },
+ {
+  "id": 10,
+  "topic": "agent pricing",
+  "score": 44,
+  "url": "https://agentnews.example/per-task-pricing",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Vendors move agents to per-task pricing",
+  "summary": "Three vendors announced per-task pricing for hosted agents, replacing per-seat plans."
+ },
+ {
+  "id": 11,
+  "topic": "agent evals",
+  "score": 64,
+  "url": "https://agentnews.example/eval-suite-release",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Open eval suite for agents ships with 500 tasks",
+  "summary": "The suite has 500 tasks across coding, research and support work, and scores each run on completion and cost."
+ },
+ {
+  "id": 12,
+  "topic": "multi-agent orchestration",
+  "score": 63,
+  "url": "https://agentnews.example/orchestrator-pattern",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Orchestrator pattern splits research across 5 sub-agents",
+  "summary": "A case study describes one lead agent handing reading to 5 sub-agents and merging their notes."
+ },
+ {
+  "id": 13,
+  "topic": "tool calling",
+  "score": 70,
+  "url": "https://agentnews.example/strict-tool-schemas",
+  "published_at": "2026-11-14T09:00:00Z",
+  "title": "Strict tool schemas end malformed tool arguments in tests",
+  "summary": "Turning on strict schemas removed malformed tool arguments across 2,000 test calls, according to the release notes."
+ },
+ {
+  "id": 14,
+  "topic": "browser agents",
+  "score": 96,
+  "url": "https://agentnews.example/browser-agent-launch",
+  "published_at": "2026-11-02T09:00:00Z",
+  "title": "Browser agent launch is a game-changer, says vendor",
+  "summary": "The vendor claims its browser agent books travel end to end and has 1.5 million waitlist sign-ups."
+ },
+ {
+  "id": 15,
+  "topic": "agent security",
+  "score": 49,
+  "url": "https://agentnews.example/sandbox-defaults",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Agent frameworks turn on sandboxing by default",
+  "summary": "Two frameworks now run agent shell commands in a sandbox unless the developer opts out."
+ },
+ {
+  "id": 16,
+  "topic": "agent memory",
+  "score": 71,
+  "url": "https://agentnews.example/memory-compaction",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Memory compaction keeps agent context under 50,000 tokens",
+  "summary": "A summarizing memory layer kept agent context under 50,000 tokens during week-long tasks."
+ },
+ {
+  "id": 17,
+  "topic": "voice agents",
+  "score": 39,
+  "url": "https://agentnews.example/voice-agent-handoff",
+  "published_at": "2026-11-14T09:00:00Z",
+  "title": "Voice agents hand calls to humans in under 2 seconds",
+  "summary": "A contact-center vendor says its voice agents now transfer to a human in under 2 seconds."
+ },
+ {
+  "id": 18,
+  "topic": "coding agents",
+  "score": 57,
+  "url": "https://agentnews.example/coding-agent-tests",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Coding agents now write tests first in a new workflow",
+  "summary": "A team reports its coding agents write failing tests before code, and 64% of their patches pass review on the first try."
+ },
+ {
+  "id": 19,
+  "topic": "agent observability",
+  "score": 42,
+  "url": "https://agentnews.example/cost-dashboards",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Cost dashboards break down agent spend per tool",
+  "summary": "New dashboards attribute agent spend to individual tools, so teams can see which tool calls cost the most."
+ },
+ {
+  "id": 20,
+  "topic": "agent pricing",
+  "score": 36,
+  "url": "https://agentnews.example/free-tier-cuts",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Agent platforms trim free tiers",
+  "summary": "Two agent platforms cut free-tier task limits by half this week."
+ },
+ {
+  "id": 21,
+  "topic": "agent evals",
+  "score": 88,
+  "url": "https://agentnews.example/evals-cost-tracking",
+  "published_at": "2026-11-13T09:00:00Z",
+  "title": "Agent evals start tracking cost per completed task",
+  "summary": "A benchmark update reports cost per completed task alongside accuracy, and the cheapest top-10 agent spent $0.42 per task."
+ },
+ {
+  "id": 22,
+  "topic": "multi-agent orchestration",
+  "score": 60,
+  "url": "https://agentnews.example/agent-handoffs",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Handoffs between agents drop context in 1 of 4 runs",
+  "summary": "A study of 400 multi-agent runs found context lost at a handoff in 1 of every 4."
+ },
+ {
+  "id": 23,
+  "topic": "agent reliability",
+  "score": 98,
+  "url": "https://agentnews.example/agent-retries",
+  "published_at": "2026-10-30T09:00:00Z",
+  "title": "Revolutionary retry layer makes agents 5x more reliable",
+  "summary": "The vendor says automatic retries made its agents 5x more reliable across 10,000 runs."
+ },
+ {
+  "id": 24,
+  "topic": "browser agents",
+  "score": 53,
+  "url": "https://agentnews.example/browser-agent-captcha",
+  "published_at": "2026-11-15T09:00:00Z",
+  "title": "Browser agents stop at CAPTCHAs and ask for help",
+  "summary": "A browser agent release now pauses at CAPTCHAs and hands control back to the user."
+ },
+ {
+  "id": 25,
+  "topic": "agent security",
+  "score": 35,
+  "url": "https://agentnews.example/secrets-in-logs",
+  "published_at": "2026-11-15T09:00:00Z",
+  "title": "Agent logs leak API keys in 3% of sampled traces",
+  "summary": "A scan of 5,000 agent traces found API keys written to logs in 3% of them."
+ },
+ {
+  "id": 26,
+  "topic": "tool calling",
+  "score": 50,
+  "url": "https://agentnews.example/tool-search",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Tool search lets agents load tools on demand",
+  "summary": "Agents can now search a catalog of 1,000 tools and load only the ones a task needs."
+ },
+ {
+  "id": 27,
+  "topic": "coding agents",
+  "score": 31,
+  "url": "https://agentnews.example/coding-agent-leverage",
+  "published_at": "2026-11-14T09:00:00Z",
+  "title": "Teams leverage coding agents for migrations",
+  "summary": "Teams report using coding agents to move 40 services to a new logging library."
+ },
+ {
+  "id": 28,
+  "topic": "agent memory",
+  "score": 33,
+  "url": "https://agentnews.example/memory-privacy",
+  "published_at": "2026-11-11T09:00:00Z",
+  "title": "Memory privacy controls let users delete what agents remember",
+  "summary": "A new setting lets users see and delete the facts an agent has stored about them."
+ },
+ {
+  "id": 29,
+  "topic": "voice agents",
+  "score": 30,
+  "url": "https://agentnews.example/voice-agent-accents",
+  "published_at": "2026-11-12T09:00:00Z",
+  "title": "Voice agents improve on regional accents",
+  "summary": "An update cut word errors on regional accents by 18% in the vendor's tests."
+ },
+ {
+  "id": 30,
+  "topic": "agent observability",
+  "score": 28,
+  "url": "https://agentnews.example/replay-debugging",
+  "published_at": "2026-11-15T09:00:00Z",
+  "title": "Replay debugging comes to agent traces",
+  "summary": "Developers can now replay a recorded agent run step by step from its trace."
+ }
+]
